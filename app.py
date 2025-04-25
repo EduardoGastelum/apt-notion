@@ -1,7 +1,6 @@
 import os
-from flask import Flask, request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 from notion_client import Client
 from dotenv import load_dotenv
 
@@ -12,8 +11,6 @@ NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 NOTION_DB_ID = os.getenv("NOTION_DB_ID")
 
 notion = Client(auth=NOTION_TOKEN)
-
-app = Flask(__name__)
 
 COORD_ENCARGADOS = {
     "Académica": ["Sebas"],
@@ -29,7 +26,6 @@ COORD_ENCARGADOS = {
     "Denisse": ["RRPP"]
 }
 
-# Para obtener todas las personas y coordinaciones
 TODAS_COORDINACIONES = ["Académica", "Administrativa", "Calidad", "Organización", "RRPP"]
 TODOS_ENCARGADOS = ["Sebas", "Archie", "Diana", "Joss", "Gaste", "Denisse"]
 
@@ -50,10 +46,10 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     encargado_input = None
     tareas_lineas = []
 
-    if lineas[0].startswith("Encargado:"):
+    if lineas[0].lower().startswith("encargado:"):
         encargado_input = lineas[0].replace("Encargado:", "").strip().lower()
         tareas_lineas = lineas[2:] if len(lineas) > 2 else []
-    elif lineas[0].startswith("Tareas:"):
+    elif lineas[0].lower().startswith("tareas:"):
         tareas_lineas = lineas[1:]
     else:
         await update.message.reply_text("Formato incorrecto. Usa al menos 'Tareas:' o 'Encargado:'")
@@ -68,14 +64,12 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
             coordinaciones = TODAS_COORDINACIONES
         else:
             encargados = COORD_ENCARGADOS.get(encargado_input.capitalize(), [encargado_input.capitalize()])
-            # Identifica automáticamente coordinaciones
             for enc in encargados:
                 coords = COORD_ENCARGADOS.get(enc, [])
                 for coord in coords:
                     if coord in TODAS_COORDINACIONES and coord not in coordinaciones:
                         coordinaciones.append(coord)
 
-    # Añadir cada tarea individualmente
     tareas_creadas = 0
     for tarea in tareas_lineas:
         tarea = tarea.strip("- ").strip()
@@ -88,17 +82,16 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ No se encontró ninguna tarea válida para añadir.")
 
-telegram_app = ApplicationBuilder().token(TOKEN).build()
-telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), procesar_mensaje))
+# Ejecuta el bot directamente como webhook listener
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), procesar_mensaje))
 
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    telegram_app.update_queue.put_nowait(Update.de_json(request.get_json(), telegram_app.bot))
-    return "ok", 200
-
-@app.route("/", methods=["GET"])
-def home():
-    return "API Telegram-Notion lista ✅", 200
-
+if __name__ == '__main__':
+    print("Iniciando bot en modo webhook...")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get('PORT', 10000)),
+        webhook_url=f"https://apt-notion.onrender.com/{TOKEN}"
+    )
 if __name__ == "__main__":
     app.run()
