@@ -89,9 +89,9 @@ app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), procesar_mensa
 if __name__ == '__main__':
     print("Iniciando bot en modo webhook...")
     app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get('PORT', 10000)),
-        webhook_url=f"https://apt-notion.onrender.com/{TOKEN}"
-    )
+    listen="0.0.0.0",
+    port=int(os.environ.get('PORT', 10000)),
+    webhook_url="https://apt-notion.onrender.com/"
+)
 if __name__ == "__main__":
     app.run()
