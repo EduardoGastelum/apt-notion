@@ -1,6 +1,5 @@
-
-   fastapi
-   uvicorn[standard]
-   openai
-   notion-client
-   python-dotenv
+flask
+python-telegram-bot==20.8
+notion-client
+python-dotenv
+gunicorn
